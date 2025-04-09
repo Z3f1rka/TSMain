@@ -1,0 +1,9 @@
+[submodule "TS-backend"]
+	path = TS-backend
+	url = https://github.com/Z3f1rka/TS-backend
+[submodule "TS-Frontend"]
+	path = TS-Frontend
+	url = https://github.com/Z3f1rka/TS-Frontend
+[submodule "TS-Files"]
+	path = TS-Files
+	url = https://github.com/Z3f1rka/TS-Files
