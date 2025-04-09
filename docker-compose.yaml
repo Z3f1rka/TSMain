@@ -1,0 +1,103 @@
+# version: "3.8"
+
+services:
+  backend:
+    container_name: GribDocsBackend
+    build:
+      context: ./TS-backend
+      dockerfile: Dockerfile
+    environment:
+      API_HOST: 0.0.0.0
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
+      ACCESS_TOKEN_LT: ${ACCESS_TOKEN_LT}
+      REFRESH_TOKEN_LT: ${REFRESH_TOKEN_LT}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      ENCRYPT_ALG: ${ENCRYPT_ALG}
+      PREFIX: /api
+      API_PORT: 8000
+      HALFLIFE: ${HALFLIFE}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+      - backend
+
+  db:
+    image: postgres:17
+    container_name: GribTripDB
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "8080:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+
+  frontend:
+    container_name: GribDocsFrontend
+    build:
+      context: ./TS-Frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: http://localhost/api/
+      HOST: 0.0.0.0
+      PORT: 5173
+      VITE_FILES_API_URL: http://localhost/photo/
+    depends_on:
+      - backend
+      - photo_server
+    networks:
+      - default
+
+  photo_server:
+    container_name: GribDocsPhoto
+    build:
+      context: ./TS-Files
+      dockerfile: Dockerfile
+    environment:
+      API_PORT: 8080
+      MAIN_API: http://localhost/api/
+      API_HOST: 0.0.0.0
+      ACCESS_TOKEN_LT: ${ACCESS_TOKEN_LT}
+      REFRESH_TOKEN_LT: ${REFRESH_TOKEN_LT}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      ENCRYPT_ALG: ${ENCRYPT_ALG}
+    depends_on:
+      - backend
+    networks:
+      - default
+    volumes:
+      - grib_docs_photos:/application/files
+
+  nginx:
+   image: nginx:1.27-alpine
+   ports:
+     - "80:80"
+   depends_on:
+     - frontend
+     - backend
+   networks:
+     - default
+   volumes:
+     - "./nginx.conf:/etc/nginx/nginx.conf"
+
+volumes:
+  postgres_data_prod:
+  grib_docs_photos:
+
+networks:
+  default:
+  backend:
